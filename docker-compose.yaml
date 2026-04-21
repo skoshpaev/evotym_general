@@ -1,0 +1,61 @@
+services:
+  bootstrap-projects:
+    image: alpine/git:2.47.1
+    entrypoint: ["/bin/sh"]
+    working_dir: "${PWD}"
+    environment:
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+      HOST_WORKSPACE: "${PWD}"
+    volumes:
+      - ${PWD}:${PWD}
+    command: ["${PWD}/scripts/bootstrap-projects.sh"]
+
+  product:
+    image: docker:27.0.3-cli
+    entrypoint: ["/bin/sh"]
+    working_dir: "${PWD}"
+    environment:
+      HOST_WORKSPACE: "${PWD}"
+    depends_on:
+      bootstrap-projects:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ${PWD}:${PWD}
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["${PWD}/scripts/orchestrate-project.sh", "product"]
+
+  order:
+    image: docker:27.0.3-cli
+    entrypoint: ["/bin/sh"]
+    working_dir: "${PWD}"
+    environment:
+      HOST_WORKSPACE: "${PWD}"
+    depends_on:
+      bootstrap-projects:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ${PWD}:${PWD}
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["${PWD}/scripts/orchestrate-project.sh", "order"]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - shared
+
+networks:
+  shared:
+    name: evotym_shared

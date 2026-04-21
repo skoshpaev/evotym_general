@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR="/workspace"
+ROOT_DIR="${HOST_WORKSPACE:?HOST_WORKSPACE is required}"
 
 bootstrap_project() {
     project_name="$1"

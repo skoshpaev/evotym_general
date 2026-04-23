@@ -1,8 +1,9 @@
+#file: noinspection SpellCheckingInspection
 # TEST PROJECT ONLY: ENV VALUES AND BUILT-IN CREDENTIALS IN THIS FILE ARE COMMITTED ONLY TO KEEP THE LOCAL ORCHESTRATION STACK SELF-CONTAINED.
 services:
   bootstrap-projects:
     image: docker:27.0.3-cli
-    entrypoint: ["/bin/sh"]
+    entrypoint: [ "/bin/sh" ]
     working_dir: "${PWD}"
     environment:
       GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
@@ -10,7 +11,7 @@ services:
     volumes:
       - ${PWD}:${PWD}
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["${PWD}/scripts/bootstrap-projects.sh"]
+    command: [ "${PWD}/scripts/bootstrap-projects.sh" ]
     depends_on:
       product-mysql:
         condition: service_healthy
@@ -39,7 +40,7 @@ services:
     volumes:
       - ./product:/workspace/product
       - product-composer-cache:/tmp/composer-cache
-    command: ["php-fpm"]
+    command: [ "php-fpm" ]
     restart: unless-stopped
     networks:
       product-internal:
@@ -69,7 +70,7 @@ services:
     volumes:
       - ./product:/workspace/product
       - product-composer-cache:/tmp/composer-cache
-    command: ["php", "bin/console", "messenger:consume", "order_created", "--time-limit=3600", "--memory-limit=128M", "--no-interaction", "-vv"]
+    command: [ "php", "bin/console", "messenger:consume", "order_created", "--time-limit=3600", "--memory-limit=128M", "--no-interaction", "-vv" ]
     restart: unless-stopped
     networks:
       product-internal:
@@ -97,7 +98,7 @@ services:
     volumes:
       - ./product:/workspace/product
       - product-composer-cache:/tmp/composer-cache
-    command: ["sh", "-lc", "while true; do php bin/console app:publish-outbox; sleep 60; done"]
+    command: [ "sh", "-lc", "while true; do php bin/console app:publish-outbox; sleep 60; done" ]
     restart: unless-stopped
     networks:
       product-internal:
@@ -110,7 +111,7 @@ services:
         condition: service_completed_successfully
       product-app:
         condition: service_started
-    entrypoint: ["/bin/sh", "-lc", "cp /workspace/product/docker/nginx/default.conf /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+    entrypoint: [ "/bin/sh", "-lc", "cp /workspace/product/docker/nginx/default.conf /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'" ]
     ports:
       - "8081:80"
     volumes:
@@ -128,7 +129,7 @@ services:
       MYSQL_PASSWORD: product
       MYSQL_ROOT_PASSWORD: root
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -proot --silent"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -proot --silent" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -161,7 +162,7 @@ services:
     volumes:
       - ./order:/workspace/order
       - order-composer-cache:/tmp/composer-cache
-    command: ["php-fpm"]
+    command: [ "php-fpm" ]
     restart: unless-stopped
     networks:
       order-internal:
@@ -190,7 +191,34 @@ services:
     volumes:
       - ./order:/workspace/order
       - order-composer-cache:/tmp/composer-cache
-    command: ["php", "bin/console", "messenger:consume", "product_updated", "order_processing_status", "--time-limit=3600", "--memory-limit=128M", "--no-interaction", "-vv"]
+    command: [ "php", "bin/console", "messenger:consume", "product_updated", "order_processing_status", "--time-limit=3600", "--memory-limit=128M", "--no-interaction", "-vv" ]
+    restart: unless-stopped
+    networks:
+      order-internal:
+      shared:
+
+  order-publisher:
+    image: order-app
+    pull_policy: never
+    working_dir: /workspace/order
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "0"
+      COMPOSER_ALLOW_SUPERUSER: "1"
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+      DATABASE_URL: "mysql://order:order@mysql:3306/order?serverVersion=8.0.36&charset=utf8mb4"
+    depends_on:
+      bootstrap-projects:
+        condition: service_completed_successfully
+      order-mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./order:/workspace/order
+      - order-composer-cache:/tmp/composer-cache
+    command: [ "sh", "-lc", "while true; do php bin/console app:publish-outbox; sleep 60; done" ]
     restart: unless-stopped
     networks:
       order-internal:
@@ -203,7 +231,7 @@ services:
         condition: service_completed_successfully
       order-app:
         condition: service_started
-    entrypoint: ["/bin/sh", "-lc", "cp /workspace/order/docker/nginx/default.conf /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+    entrypoint: [ "/bin/sh", "-lc", "cp /workspace/order/docker/nginx/default.conf /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'" ]
     ports:
       - "8082:80"
     volumes:
@@ -221,7 +249,7 @@ services:
       MYSQL_PASSWORD: order
       MYSQL_ROOT_PASSWORD: root
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -proot --silent"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -proot --silent" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -242,7 +270,7 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 20

@@ -17,12 +17,31 @@
 
 Нужен только Docker с Compose.
 
+Ещё важно:
+- на первом старте нужен доступ в интернет
+- должны быть свободны порты `8081`, `8082`, `5672`, `15672`
+
+Самый важный момент:
+- запускать нужно именно из директории cloned `evotym_general`
+- то есть сначала зайти в папку репозитория, и только потом запускать compose
+- не надо запускать это из соседней папки
+
+Тут есть завязка на текущую директорию запуска, поэтому запуск "не из корня проекта" может сломать bootstrap и volume mount-ы
+
 Я запускал так:
 
 ```bash
-cd Evotym
+git clone git@github.com:skoshpaev/evotym_general.git
+cd evotym_general
 docker compose up -d --build
 ```
+
+Первый старт может быть небыстрым.
+Это нормально, потому что в этот момент:
+- клонируются `product` и `order`
+- собираются Docker image
+- ставятся зависимости
+- прогоняются миграции
 
 Проверить, что всё поднялось:
 
@@ -35,6 +54,11 @@ docker compose ps
 - `product-app`, `product-consumer`, `product-publisher`, `product-nginx`, `product-mysql` работают
 - `order-app`, `order-consumer`, `order-publisher`, `order-nginx`, `order-mysql` работают
 - `rabbitmq` работает
+
+То есть быстрый чек-лист после старта такой:
+- сначала дождаться, пока `bootstrap-projects` завершится
+- потом проверить `docker compose ps`
+- и только потом делать `curl` / HTTP-проверки
 
 ## Куда стучаться
 

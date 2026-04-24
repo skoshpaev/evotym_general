@@ -20,7 +20,7 @@
 Я запускал так:
 
 ```bash
-cd /Users/koshpaevsv/Evotym
+cd Evotym
 docker compose up -d --build
 ```
 
@@ -134,5 +134,5 @@ docker exec evotym-order-app-1 vendor/bin/phpunit -c phpunit.dist.xml
 - общие штуки вынесены в отдельный shared bundle
 
 Если нужно смотреть каждый сервис отдельно, у них есть свои README:
-- [/Users/koshpaevsv/Evotym/product/README.md](/product/README.md)
-- [/Users/koshpaevsv/Evotym/order/README.md](/order/README.md)
+- [product/README.md](product/README.md)
+- [order/README.md](order/README.md)

@@ -9,10 +9,48 @@ ensure_dependencies() {
     fi
 }
 
+extract_github_owner() {
+    remote_url="$1"
+
+    printf '%s\n' "$remote_url" | sed -n 's#.*github.com[:/]\([^/]*\)/.*#\1#p'
+}
+
+detect_github_owner() {
+    if [ -n "${GITHUB_OWNER:-}" ]; then
+        printf '%s\n' "$GITHUB_OWNER"
+        return 0
+    fi
+
+    if [ -d "$ROOT_DIR/.git" ]; then
+        owner="$(extract_github_owner "$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null || true)")"
+
+        if [ -n "$owner" ]; then
+            printf '%s\n' "$owner"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+build_repo_https_url() {
+    owner="$1"
+    project_name="$2"
+
+    printf 'https://github.com/%s/evotym_%s.git\n' "$owner" "$project_name"
+}
+
+build_repo_ssh_url() {
+    owner="$1"
+    project_name="$2"
+
+    printf 'git@github.com:%s/evotym_%s.git\n' "$owner" "$project_name"
+}
+
 bootstrap_project() {
     project_name="$1"
-    remote_url="$2"
     target_dir="$ROOT_DIR/$project_name"
+    owner="$(detect_github_owner || true)"
 
     mkdir -p "$target_dir"
 
@@ -26,16 +64,22 @@ bootstrap_project() {
         return 0
     fi
 
+    if [ -z "$owner" ]; then
+        echo "[bootstrap] GitHub owner is not configured. Set GITHUB_OWNER before bootstrap." >&2
+        exit 1
+    fi
+
+    remote_url="$(build_repo_https_url "$owner" "$project_name")"
     clone_url="$remote_url"
     if [ -n "${GITHUB_TOKEN:-}" ]; then
-        clone_url="https://x-access-token:${GITHUB_TOKEN}@github.com/skoshpaev/evotym_${project_name}.git"
+        clone_url="https://x-access-token:${GITHUB_TOKEN}@${remote_url#https://}"
         echo "[bootstrap] Cloning $project_name with token authentication"
     else
         echo "[bootstrap] Cloning $project_name"
     fi
 
     git clone "$clone_url" "$target_dir"
-    git -C "$target_dir" remote set-url origin "git@github.com:skoshpaev/evotym_${project_name}.git" >/dev/null 2>&1 || true
+    git -C "$target_dir" remote set-url origin "$(build_repo_ssh_url "$owner" "$project_name")" >/dev/null 2>&1 || true
 }
 
 prepare_runtime_image() {
@@ -107,12 +151,12 @@ ensure_dependencies
 for project_name in "$@"; do
     case "$project_name" in
         product)
-            bootstrap_project "product" "https://github.com/skoshpaev/evotym_product.git"
+            bootstrap_project "product"
             prepare_runtime_image "product"
             run_database_migrations "product"
             ;;
         order)
-            bootstrap_project "order" "https://github.com/skoshpaev/evotym_order.git"
+            bootstrap_project "order"
             prepare_runtime_image "order"
             run_database_migrations "order"
             ;;
